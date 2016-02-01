@@ -1,8 +1,11 @@
-package com.example.android.sunshine;
+package com.example.android.sunshine.fragments;
 
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.v4.app.Fragment;
 import android.text.format.Time;
 import android.util.Log;
@@ -12,8 +15,13 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
+
+import com.example.android.sunshine.BuildConfig;
+import com.example.android.sunshine.R;
+import com.example.android.sunshine.activities.DetailActivity;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -27,9 +35,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Date;
-import java.util.List;
 
 public class ForecastFragment extends Fragment {
 
@@ -54,8 +60,7 @@ public class ForecastFragment extends Fragment {
     public boolean onOptionsItemSelected(MenuItem item) {
         int id = item.getItemId();
         if (id == R.id.action_refresh) {
-            FetchWeatherTask weatherTask = new FetchWeatherTask();
-            weatherTask.execute("94043");
+            updateWeather();
             return true;
         }
         return super.onOptionsItemSelected(item);
@@ -66,32 +71,57 @@ public class ForecastFragment extends Fragment {
                              Bundle savedInstanceState) {
 
         //Create some dummy data for the ListView. Here's a sample weekly forecast
-        String[] forecastArray = {
-                "Today - Sunny - 88 / 63",
-                "Tomorrow - Foggy - 80 / 63",
-                "Wed - Rainy - 79 / 59",
-                "Thurs - Sunny - 88 / 63",
-                "Fri - Foggy - 80 / 63",
-                "Sat - Rainy - 79 / 59",
-                "Sun - Rainy - 79 / 59"
-        };
+        //   String[] forecastArray = {
+        //         "Today - Sunny - 88 / 63",
+        //       "Tomorrow - Foggy - 80 / 63",
+        //     "Wed - Rainy - 79 / 59",
+        //   "Thurs - Sunny - 88 / 63",
+        // "Fri - Foggy - 80 / 63",
+        //       "Sat - Rainy - 79 / 59",
+        //     "Sun - Rainy - 79 / 59"
+        //     };
 
-        List<String> weekForecast = new ArrayList<String>(
-                Arrays.asList(forecastArray));
+        //    List<String> weekForecast = new ArrayList<String>(
+        //          Arrays.asList(forecastArray));
 
 
         mForecastAdapter = new ArrayAdapter<>(
                 getActivity(),
                 R.layout.list_item_forecast,
                 R.id.list_item_forecast_textview,
-                weekForecast);
+                new ArrayList<String>());
 
         View rootView = inflater.inflate(R.layout.fragment_main, container, false);
 
         ListView listView = (ListView) rootView.findViewById(R.id.listview_forecast);
         listView.setAdapter(mForecastAdapter);
+        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                String forecast = mForecastAdapter.getItem(position);
+                //  Toast.makeText(getActivity(), forecast, Toast.LENGTH_SHORT).show();
+                Intent intent = new Intent(getActivity(), DetailActivity.class)
+                        .putExtra(Intent.EXTRA_TEXT, forecast);
+                startActivity(intent);
+
+            }
+        });
 
         return rootView;
+    }
+
+
+    public void updateWeather() {
+        FetchWeatherTask weatherTask = new FetchWeatherTask();
+        String location = PreferenceManager.getDefaultSharedPreferences(getActivity())
+                .getString(getString(R.string.pref_location_key), getString(R.string.pref_location_default));
+        weatherTask.execute(location);
+    }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+        updateWeather();
     }
 
     public class FetchWeatherTask extends AsyncTask<String, Void, String[]> {
@@ -115,6 +145,20 @@ public class ForecastFragment extends Fragment {
 
         private String formatHighLows(double high, double low) {
             // For presentation, assume the user doesn't care about tenths of a degree.
+
+            SharedPreferences sharedPrefs = PreferenceManager.getDefaultSharedPreferences(getActivity());
+            String unitType = sharedPrefs.getString(
+                    getString(R.string.pref_units_key),
+                    getString(R.string.pref_units_metric)
+            );
+
+            if(unitType.equals(getString(R.string.pref_units_imperial))){
+                    high = (high * 1.8) + 32;
+                    low = (low * 1.8) +32;
+            }else if (!unitType.equals(getString(R.string.pref_units_metric))){
+                Log.d(LOG_TAG, "Unit type not found: " + unitType);
+            }
+
             long roundedHigh = Math.round(high);
             long roundedLow = Math.round(low);
 
@@ -233,14 +277,14 @@ public class ForecastFragment extends Fragment {
                 final String FORMAT_PARAM = "mode";
                 final String UNITS_PARAM = "units";
                 final String DAYS_PARAM = "cnt";
-                final String APP_ID = "appid";
+                final String APPID_PARAM = "appid";
 
                 Uri builtUri = Uri.parse(FORECAST_BASE_URL).buildUpon()
                         .appendQueryParameter(QUERY_PARAM, params[0])
                         .appendQueryParameter(FORMAT_PARAM, format)
                         .appendQueryParameter(UNITS_PARAM, units)
                         .appendQueryParameter(DAYS_PARAM, Integer.toString(numDays))
-                        .appendQueryParameter(APP_ID, appId)
+                        .appendQueryParameter(APPID_PARAM, BuildConfig.OPEN_WEATHER_MAP_API_KEY)
                         .build();
 
                 URL url = new URL(builtUri.toString());
