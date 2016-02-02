@@ -11,8 +11,8 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 
-import com.example.android.sunshine.fragments.ForecastFragment;
 import com.example.android.sunshine.R;
+import com.example.android.sunshine.fragments.ForecastFragment;
 
 public class MainActivity extends ActionBarActivity {
 
@@ -31,7 +31,6 @@ public class MainActivity extends ActionBarActivity {
 
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
-
 
     }
 
@@ -79,7 +78,7 @@ public class MainActivity extends ActionBarActivity {
         if(intent.resolveActivity(getPackageManager()) != null){
             startActivity(intent);
         }else{
-            Log.d(LOG_TAG, "Couldnt call" + location + ", no receiving apps installed!");
+            Log.d(LOG_TAG, "Couldn't call" + location + ", no receiving apps installed!");
         }
 
     }
